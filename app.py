@@ -9,7 +9,8 @@ from util import load_data
 from model import train_model
 
 # 🔑 Add your API Key
-client = genai.Client(api_key="ENTER_YOUR_API_KEY_HERE")
+import os
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(page_title="Student Performance AI", page_icon="🎓")
