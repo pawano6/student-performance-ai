@@ -144,6 +144,7 @@ if submit:
 
     if "saved" not in st.session_state:
         insert_prediction(db_data)
+        st.success("✅ Data saved to DB")
         st.session_state.saved = True
 
     st.subheader("📊 Decision Analysis")
@@ -301,6 +302,7 @@ st.header("📊 Prediction History Dashboard")
 if st.checkbox("📜 Show Prediction History"):
 
     data = fetch_all()
+    st.write("DB Data:", data)
 
     if data:
         df_history = pd.DataFrame(data, columns=[
@@ -312,7 +314,7 @@ if st.checkbox("📜 Show Prediction History"):
         st.dataframe(df_history)
         st.subheader("📈 Performance Distribution")
 
-        st.bar_chart(df_history["Level"].value_counts())
+        st.bar_chart(df_history["Level"].value_counts().rename_axis("Level").reset_index(name="Count"))
 
         st.subheader("⚠️ Risk Distribution")
 
