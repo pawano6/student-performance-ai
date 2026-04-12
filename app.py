@@ -143,6 +143,7 @@ if submit:
     }
 
     if "saved" not in st.session_state:
+        st.write("Saving to DB:", db_data)
         insert_prediction(db_data)
         st.success("✅ Data saved to DB")
         st.session_state.saved = True
@@ -314,7 +315,9 @@ if st.checkbox("📜 Show Prediction History"):
         st.dataframe(df_history)
         st.subheader("📈 Performance Distribution")
 
-        st.bar_chart(df_history["Level"].value_counts().rename_axis("Level").reset_index(name="Count"))
+        level_counts = df_history["Level"].value_counts().reset_index()
+        level_counts.columns = ["Level", "Count"]
+        st.bar_chart(level_counts.set_index("Level"))
 
         st.subheader("⚠️ Risk Distribution")
 
