@@ -144,9 +144,7 @@ if submit:
     }
 
     if not st.session_state.saved:
-        st.write("Saving to DB:", db_data)
         insert_prediction(db_data)
-        st.success("✅ Data saved to DB")
         st.session_state.saved = True
 
     st.subheader("📊 Decision Analysis")
@@ -298,8 +296,6 @@ if submit:
 
     st.divider()
 
-if st.button("🔄 Refresh Dashboard"):
-    st.rerun()
     # ---------- DASHBOARD ----------
 st.markdown("---")
 st.header("📊 Prediction History Dashboard")
@@ -334,6 +330,9 @@ if st.checkbox("📜 Show Prediction History"):
 
     else:
         st.info("No data available yet")
+
+if st.button("🔄 Refresh Dashboard"):
+    st.rerun()
 
 # ---------- FOOTER ----------
 st.markdown("---")
