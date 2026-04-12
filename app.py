@@ -1,184 +1,296 @@
 import streamlit as st
-import numpy as np
 import pandas as pd
-import time
+import matplotlib.pyplot as plt
 import google.generativeai as genai
-
-# ✅ Import from your modules
-from util import load_data
-from model import train_model
-
-# 🔑 Add your API Key
 import os
+from io import BytesIO
+import base64
+from database import create_table, insert_prediction, fetch_all
+
+from util import load_data
+from model import train_model, predict_scores
+from decision import analyze_performance
+from ai_module import generate_ai_analysis
+
+# 🔑 API Key
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# ---------- PAGE CONFIG ----------
+# ---------- PAGE ----------
 st.set_page_config(page_title="Student Performance AI", page_icon="🎓")
 
-# ---------- TITLE ----------
 st.title("🎓 Student Performance AI App")
 st.write("Predict student performance and get AI-powered insights")
 
-# ---------- LOAD DATA (CACHED) ----------
+# ---------- LOAD DATA ----------
 @st.cache_data
 def get_data():
     return load_data()
 
 df = get_data()
 
-# ---------- TRAIN MODEL (CACHED) ----------
 @st.cache_resource
+def init_db():
+    create_table()
+
+init_db() 
+
 def get_model(data):
     return train_model(data)
 
-model, mae = get_model(df)
+model, mae, rmse, r2 = get_model(df)
 
-# ---------- OPTIONAL UI ----------
-if st.checkbox("📂 Show Dataset Preview"):
+if "saved" not in st.session_state:
+    st.session_state.saved = False
+
+# ---------- OPTIONAL ----------
+if st.checkbox("📂 Show Data"):
     st.dataframe(df.head())
 
-if st.checkbox("📊 Show Model Info"):
-    st.write("Model: Linear Regression")
+if st.checkbox("📊 Model Info"):
+    st.write("Model: Random Forest")
+    st.write(f"MAE: {mae:.2f}")
+    st.write(f"RMSE: {rmse:.2f}")
+    st.write(f"R2 Score: {r2:.2f}")
+# ---------- INPUT ----------
+st.header("📥 Enter Student Details")
+
+with st.form("form"):
+
+    math = st.number_input("Math Score", min_value=0, max_value=100, value=None, placeholder="Enter Math Score")
+    reading = st.number_input("Reading Score", min_value=0, max_value=100, value=None, placeholder="Enter Reading Score")
+
+    gender = st.selectbox("Gender", df["gender"].unique())
+    race = st.selectbox("Race/Ethnicity", df["race/ethnicity"].unique())
+    parental = st.selectbox("Parental Education", df["parental level of education"].unique())
+    lunch = st.selectbox("Lunch Type", df["lunch"].unique())
+    prep = st.selectbox("Test Preparation Course", df["test preparation course"].unique())
+
+    submit = st.form_submit_button("🚀 Predict")
     
-
-# ---------- INPUT FORM ----------
-st.header("📥 Enter Student Scores")
-
-with st.form("input_form"):
-
-    math = st.number_input(
-        "Math Score", min_value=0, max_value=100,
-        value=None, placeholder="Enter Math Score"
-    )
-    reading = st.number_input(
-        "Reading Score", min_value=0, max_value=100,
-        value=None, placeholder="Enter Reading Score"
-    )
-    writing = st.number_input(
-        "Writing Score", min_value=0, max_value=100,
-        value=None, placeholder="Enter Writing Score"
-    )
-
-    submit = st.form_submit_button("🚀 Predict Performance")
-
 # ---------- PREDICTION ----------
 if submit:
 
-    # ✅ Validation
-    if math is None or reading is None or writing is None:
-        st.warning("⚠️ Please enter all scores")
+    if math is None or reading is None or math <= 0 or reading <= 0 :
+        st.warning("⚠️ Please enter valid scores")
         st.stop()
-
-    # ---------- DATASET INSIGHTS ----------
-    st.subheader("📊 Dataset Insights")
-
-    avg_score = df["average_score"].mean()
-
-    st.write(f"Average Score: {avg_score:.2f}")
-    st.write(f"Highest Score: {df['average_score'].max():.2f}")
-    st.write(f"Lowest Score: {df['average_score'].min():.2f}")
-
-    st.write(f"📉 Model MAE: {mae:.2f}")
-    st.caption("MAE shows average prediction error (lower is better)")
-
-    # ---------- PREDICTION ----------
-    input_data = np.array([[math, reading, writing]])
-    prediction = model.predict(input_data)[0]
-
-    st.success(f"📊 Predicted Score: {prediction:.2f}")
-
-    # ---------- PERFORMANCE LEVEL ----------
-    if prediction >= 85:
-        level = "Excellent"
-    elif prediction >= 70:
-        level = "Good"
-    elif prediction >= 50:
-        level = "Average"
-    else:
-        level = "Poor"
-
-    st.write(f"🏷️ Performance Level: **{level}**")
-
-    # ---------- CHART ----------
-    st.subheader("📈 Subject-wise Scores")
-
-    chart_data = pd.DataFrame({
-        "Subjects": ["Math", "Reading", "Writing", "Average"],
-        "Scores": [math, reading, writing, prediction]
+    # Prepare input
+    input_data = pd.DataFrame({
+        "gender": [gender],
+        "race/ethnicity": [race],
+        "parental level of education": [parental],
+        "lunch": [lunch],
+        "test preparation course": [prep],
+        "math score": [math],
+        "reading score": [reading]
     })
 
+    # Get predictions
+    predicted_writing, final_score = predict_scores(model, input_data)
+
+    # ---------- OUTPUT ----------
+    st.success(f"✍️ Predicted Writing Score: {predicted_writing:.2f}")
+    st.success(f"📊 Final Score: {final_score:.2f}")
+    st.divider()
+
+    # ---------- CHART ----------
+    chart_data = pd.DataFrame({
+        "Subjects": ["Math", "Reading", "Writing (Pred)", "Final"],
+        "Scores": [math, reading, predicted_writing, final_score]
+    })
+
+    st.subheader("📈 Subject-wise Scores")
     st.bar_chart(chart_data.set_index("Subjects"))
+    # Create chart image for report
+    fig, ax = plt.subplots()
+    ax.bar(chart_data["Subjects"], chart_data["Scores"])
+    ax.set_title("Student Performance")
+
+    # Save image to memory
+    img_buffer = BytesIO()
+    fig.savefig(img_buffer, format="png")
+    img_buffer.seek(0)
+
+    # Convert to base64
+    img_base64 = base64.b64encode(img_buffer.read()).decode()
+    plt.close(fig)
 
     # ---------- WEAK SUBJECT ----------
-    scores = {"Math": math, "Reading": reading, "Writing": writing}
+    scores = {
+        "Math": math,
+        "Reading": reading,
+        "Writing": predicted_writing
+    }
+
     weak_subject = min(scores, key=scores.get)
-
     st.write(f"📉 Weakest Subject: **{weak_subject}**")
+    st.divider()
+    # ---------- PERFORMANCE LEVEL ----------
+    level, risk, recommendation = analyze_performance(final_score, weak_subject)
 
-    # ---------- AI ANALYSIS (CACHED) ----------
+    db_data = {
+    "gender": gender,
+    "race": race,
+    "parental": parental,
+    "lunch": lunch,
+    "prep": prep,
+    "math": math,
+    "reading": reading,
+    "writing": predicted_writing,
+    "final_score": final_score,
+    "level": level,
+    "risk": risk,
+    "weak_subject": weak_subject
+    }
+
+    if "saved" not in st.session_state:
+        insert_prediction(db_data)
+        st.session_state.saved = True
+
+    st.subheader("📊 Decision Analysis")
+
+    st.write(f"🏷️ Performance Level: **{level}**")
+    st.write(f"⚠️ Risk Level: **{risk}**")
+    st.write(f"💡 Recommendation: {recommendation}")
+
+    
+    # ---------- AI ANALYSIS WITH CACHE ----------
+    
     st.subheader("🤖 AI Performance Analysis")
 
-    cache_key = f"{math}-{reading}-{writing}"
+    # Create unique cache key
+    cache_key = f"{gender}-{race}-{parental}-{lunch}-{prep}-{math}-{reading}"
 
+    # Initialize session cache
     if "ai_cache" not in st.session_state:
         st.session_state.ai_cache = {}
 
-    # ✅ Use cache (no API call)
+    # Prepare AI input
+    ai_data = {
+        "gender": gender,
+        "race": race,
+        "parental": parental,
+        "lunch": lunch,
+        "prep": prep,
+        "math": math,
+        "reading": reading,
+        "writing": round(predicted_writing, 2),
+        "final_score": round(final_score, 2),
+        "level": level,
+        "risk": risk,
+        "weak_subject": weak_subject
+    }
+
+    # ---------- CACHE CHECK ----------
     if cache_key in st.session_state.ai_cache:
-        st.success("⚡ Loaded from cache (no API used)")
-        st.write(st.session_state.ai_cache[cache_key])
+        st.success("⚡ Loaded from cache (No API call)")
+        ai_output = st.session_state.ai_cache[cache_key]
+        st.write(ai_output)
 
     else:
-        prompt = f"""
-        Student Scores:
-        Math: {math}, Reading: {reading}, Writing: {writing}
-        Predicted Score: {prediction:.2f}
-
-        Explain performance in simple terms.
-        Suggest 2-3 improvements.
-        """
-
         try:
             with st.spinner("Analyzing with AI..."):
-                model = genai.GenerativeModel("gemini-3-flash-preview")
-                response = model.generate_content(prompt)
 
-                ai_text = response.text
+                ai_output = generate_ai_analysis(ai_data)
 
-                # Save response
-                st.session_state.ai_cache[cache_key] = ai_text
+                if ai_output:
+                    # Save to cache
+                    st.session_state.ai_cache[cache_key] = ai_output
 
-                st.success("✅ AI Response")
-                st.write(ai_text)
+                    st.success("✅ AI Analysis")
+                    st.write(ai_output)
+
+                else:
+                    raise Exception("AI failed")
 
         except Exception:
-            st.info("ℹ️ AI temporarily unavailable. Showing basic analysis.")
+            st.warning("⚠️ AI unavailable, showing fallback")
 
-            if prediction >= 85:
-                fallback = "Excellent performance. Keep it up!"
-            elif prediction >= 70:
-                fallback = "Good performance. Practice more."
-            elif prediction >= 50:
-                fallback = "Average performance. Focus on weak areas."
+            # ---------- FALLBACK ----------
+            if final_score >= 85:
+                ai_output = "Excellent performance. Keep it up!"
+            elif final_score >= 70:
+                ai_output = "Good performance. Focus on improving weaker areas."
+            elif final_score >= 50:
+                ai_output = "Average performance. Regular practice is needed."
             else:
-                fallback = "Needs improvement. Work on basics."
+                ai_output = "Performance is below average. Focus on fundamentals."
 
-            st.write(fallback)
+            # Save fallback also in cache 
+            st.session_state.ai_cache[cache_key] = ai_output
+
+            st.write(ai_output)
 
     # ---------- DOWNLOAD REPORT ----------
     report = f"""
-Student Performance Report
+    <h2>🎓 Student Performance Report</h2>
 
-Math: {math}
-Reading: {reading}
-Writing: {writing}
+    <hr>
 
-Predicted Score: {prediction:.2f}
-Performance Level: {level}
-Weakest Subject: {weak_subject}
-"""
+    <h3>📊 Scores</h3>
+    <ul>
+    <li>Math: {math}</li>
+    <li>Reading: {reading}</li>
+    <li>Predicted Writing: {predicted_writing:.2f}</li>
+    <li><b>Final Score: {final_score:.2f}</b></li>
+    </ul>
 
-    st.download_button("📥 Download Report", report)
+    <h3>📊 Decision Analysis</h3>
+    <ul>
+    <li>Performance Level: {level}</li>
+    <li>Risk Level: {risk}</li>
+    <li>Recommendation: {recommendation}</li>
+    </ul>
+
+    <h3>📊 Performance Chart</h3>
+    <img src="data:image/png;base64,{img_base64}" width="400"/>
+
+    <h3>🤖 AI Analysis</h3>
+    <p>{ai_output}</p>
+
+    <hr>
+    <p>Generated by Student Performance AI</p>
+    """
+
+    st.download_button(
+        "📥 Download Report",
+        report,
+        file_name="student_report.html",
+        mime="text/html"
+    )
+
+    st.divider()
+    # ---------- DASHBOARD ----------
+st.markdown("---")
+st.header("📊 Prediction History Dashboard")
+
+if st.checkbox("📜 Show Prediction History"):
+
+    data = fetch_all()
+
+    if data:
+        df_history = pd.DataFrame(data, columns=[
+            "ID", "Gender", "Race", "Parental", "Lunch", "Prep",
+            "Math", "Reading", "Writing", "Final Score",
+            "Level", "Risk", "Weak Subject", "Timestamp"
+        ])
+
+        st.dataframe(df_history)
+        st.subheader("📈 Performance Distribution")
+
+        st.bar_chart(df_history["Level"].value_counts())
+
+        st.subheader("⚠️ Risk Distribution")
+
+        st.bar_chart(df_history["Risk"].value_counts())
+
+        st.subheader("📊 Overall Stats")
+
+        st.write(f"Average Final Score: {df_history['Final Score'].mean():.2f}")
+        st.write(f"Highest Score: {df_history['Final Score'].max():.2f}")
+        st.write(f"Lowest Score: {df_history['Final Score'].min():.2f}")
+
+    else:
+        st.info("No data available yet")
 
 # ---------- FOOTER ----------
 st.markdown("---")
