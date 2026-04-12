@@ -8,3 +8,4 @@ mysql-connector-python
 python-dotenv
 fastapi
 uvicorn
+markdown
