@@ -221,9 +221,9 @@ if submit:
             st.write(ai_output)
 
     # ---------- DOWNLOAD REPORT ----------
-  formatted_ai = ai_output.replace("**", "<b>").replace("\n", "<br>")
+    formatted_ai = ai_output.replace("**", "<b>").replace("\n", "<br>")
 
-  report = f"""
+    report = f"""
     <html>
     <head>
     <style>
