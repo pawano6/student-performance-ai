@@ -1,122 +1,163 @@
-# 🎓 Student Performance AI App
+# 🎓 Student Performance AI System
 
-An interactive Machine Learning + AI-powered web application that predicts student performance and provides intelligent insights.
+A full-stack AI-powered web application that predicts student performance, provides intelligent insights, and stores real-world prediction data.
 
 ---
 
 ## 🚀 Features
 
-- 📊 Predicts student average score using ML model
-- 📈 Displays subject-wise performance visualization
+- 📊 Predicts student performance using Machine Learning
+- 📈 Visualizes subject-wise scores (bar chart)
 - 📉 Identifies weakest subject
-- 🧠 Provides performance level (Excellent / Good / Average / Poor)
-- 🤖 AI-generated insights (using Generative AI)
-- ⚡ Optimized with caching (fast execution)
-- 🛡️ Fallback system when AI is unavailable
-- 📥 Downloadable performance report
+- 🧠 Decision Analysis (Performance Level + Risk + Recommendation)
+- 🤖 AI-generated insights using Generative AI
+- ⚡ Smart caching (fast performance, reduced API cost)
+- 🛡️ Fallback system if AI fails
+- 📥 Downloadable HTML performance report
+- 🗄️ Stores prediction data in cloud database (Railway MySQL)
+- 📊 Dashboard to view historical predictions
+- 🔌 FastAPI backend for API access
 
 ---
 
 ## 🧠 Tech Stack
 
-- Python
-- Streamlit (UI)
-- Pandas & NumPy (Data Processing)
-- Scikit-learn (Machine Learning)
-- Google Generative AI (AI insights)
+### Frontend
+- Streamlit
+
+### Backend
+- FastAPI
+- Uvicorn
+
+### Machine Learning
+- Scikit-learn (Random Forest / Regression)
+
+### Data Processing
+- Pandas, NumPy
+
+### Visualization
+- Matplotlib
+
+### AI Integration
+- Google Generative AI (Gemini)
+
+### Database
+- MySQL (Railway Cloud DB)
 
 ---
+
 
 ## 📂 Project Structure
+
 Student_Performance_Analysis/
+
 │
-├── app.py # Main Streamlit App
+
+├── app.py # Streamlit frontend
+
+├── api.py # FastAPI backend
+
 ├── model.py # ML model logic
+
 ├── util.py # Data processing
+
+├── decision.py # Performance logic
+
+├── ai_module.py # AI integration
+
+├── database.py # DB operations
+
 ├── requirements.txt
-├── data/
-│ └── StudentsPerformance.csv
+
+├── .env # Environment variables (not pushed)
 
 
----
-
-## 📊 Dataset
-
-- Dataset: Students Performance Dataset
-- Features:
-  - Math Score
-  - Reading Score
-  - Writing Score
-- Target:
-  - Average Score (calculated)
 
 ---
 
-## 🤖 Machine Learning Model
 
-- Model Used: Linear Regression
-- Input: Math, Reading, Writing scores
-- Output: Predicted average score
-- Evaluation Metric: MAE (Mean Absolute Error)
+## 📊 How It Works
 
----
-
-## ⚡ Optimization Techniques
-
-- Used Streamlit caching:
-  - `@st.cache_data` → for dataset
-  - `@st.cache_resource` → for model
-- AI response caching to avoid repeated API calls
-- Reduced unnecessary computations
+1. User enters student details
+2. ML model predicts writing & final score
+3. Decision engine determines:
+   - Performance Level
+   - Risk Level
+4. AI generates insights
+5. Data is stored in MySQL database
+6. Dashboard shows historical analytics
 
 ---
 
-## 🛡️ Error Handling
 
-- Retry mechanism for AI API
-- Fallback logic when AI is unavailable
-- Input validation for user entries
+## 🛡️ Error Handling & Optimization
+
+- Input validation
+- AI fallback system
+- Session-based caching
+- Streamlit caching for model & data
 
 ---
 
-## ▶️ How to Run
 
-1. Clone the repository:
+## ▶️ Run Locally
+
+bash
+
 git clone https://github.com/pawano6/student-performance-ai.git
-
-
-2. Navigate to folder:
 
 cd student-performance-ai
 
-
-3. Install dependencies:
-
 pip install -r requirements.txt
-
-
-4. Run the app:
 
 streamlit run app.py
 
 
----
 
-## 🚀 Future Improvements
+🔌 Run API
 
-- Add more features (gender, parental education, etc.)
-- Use advanced ML models (Random Forest, XGBoost)
-- Deploy on cloud (Streamlit Cloud)
-- Replace API with local AI model
+python -m uvicorn api:app --reload
 
----
+Open:
 
-## 💡 Author
+👉 http://127.0.0.1:8000/docs
+
+
+🌐 Environment Variables (.env)
+
+MYSQLHOST=your_host
+
+MYSQLUSER=your_user
+
+MYSQLPASSWORD=your_password
+
+MYSQLDATABASE=your_db
+
+MYSQLPORT=your_port
+
+GEMINI_API_KEY=your_api_key
+
+
+🚀 Future Improvements
+
+Deploy full system (frontend + backend)
+
+Add authentication (login system)
+
+Add more ML features
+
+Use advanced models (XGBoost, Deep Learning)
+
+Add real-time analytics dashboard
+
+
+👨‍💻 Author
 
 Pawan Singh
 
+
+⭐ Support
+
+If you like this project, give it a ⭐ on GitHub!
+
 ---
-
-## ⭐ If you like this project
-
-Give it a star ⭐ on GitHub!
