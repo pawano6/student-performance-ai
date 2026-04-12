@@ -143,7 +143,7 @@ if submit:
     "weak_subject": weak_subject
     }
 
-    if  not in st.session_state:
+    if not st.session_state.saved:
         st.write("Saving to DB:", db_data)
         insert_prediction(db_data)
         st.success("✅ Data saved to DB")
