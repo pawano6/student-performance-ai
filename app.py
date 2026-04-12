@@ -69,6 +69,7 @@ with st.form("form"):
     
 # ---------- PREDICTION ----------
 if submit:
+    st.session_state.saved = False
 
     if math is None or reading is None or math <= 0 or reading <= 0 :
         st.warning("⚠️ Please enter valid scores")
@@ -142,7 +143,7 @@ if submit:
     "weak_subject": weak_subject
     }
 
-    if "saved" not in st.session_state:
+    if  not in st.session_state:
         st.write("Saving to DB:", db_data)
         insert_prediction(db_data)
         st.success("✅ Data saved to DB")
@@ -296,6 +297,9 @@ if submit:
     )
 
     st.divider()
+
+if st.button("🔄 Refresh Dashboard"):
+    st.rerun()
     # ---------- DASHBOARD ----------
 st.markdown("---")
 st.header("📊 Prediction History Dashboard")
@@ -303,7 +307,6 @@ st.header("📊 Prediction History Dashboard")
 if st.checkbox("📜 Show Prediction History"):
 
     data = fetch_all()
-    st.write("DB Data:", data)
 
     if data:
         df_history = pd.DataFrame(data, columns=[
