@@ -21,6 +21,9 @@ st.set_page_config(page_title="Student Performance AI", page_icon="🎓")
 st.title("🎓 Student Performance AI App")
 st.write("Predict student performance and get AI-powered insights")
 
+if st.button("🧹 Clear All Data"):
+    st.session_state.clear()
+    st.rerun()
 # ---------- LOAD DATA ----------
 @st.cache_data
 def get_data():
@@ -34,6 +37,7 @@ def init_db():
 
 init_db() 
 
+@st.cache_resource
 def get_model(data):
     return train_model(data)
 
@@ -86,7 +90,10 @@ if submit:
     })
 
     # Get predictions
-    predicted_writing, final_score = predict_scores(model, input_data)
+    with st.spinner("Predicting..."):
+        predicted_writing, final_score = predict_scores(model, input_data)
+
+    st.toast("Prediction completed successfully 🎉")
 
     # ---------- OUTPUT ----------
     st.success(f"✍️ Predicted Writing Score: {predicted_writing:.2f}")
@@ -159,7 +166,7 @@ if submit:
     st.subheader("🤖 AI Performance Analysis")
 
     # Create unique cache key
-    cache_key = f"{gender}-{race}-{parental}-{lunch}-{prep}-{math}-{reading}"
+    cache_key = f"{gender}-{race}-{parental}-{lunch}-{prep}-{math}-{reading}-{final_score}"
 
     # Initialize session cache
     if "ai_cache" not in st.session_state:
@@ -222,7 +229,8 @@ if submit:
             st.write(ai_output)
 
     # ---------- DOWNLOAD REPORT ----------
-    formatted_ai = ai_output.replace("**", "<b>").replace("\n", "<br>")
+    import markdown
+    formatted_ai = markdown.markdown(ai_output)
 
     report = f"""
     <html>
@@ -310,6 +318,8 @@ if st.checkbox("📜 Show Prediction History"):
             "Math", "Reading", "Writing", "Final Score",
             "Level", "Risk", "Weak Subject", "Timestamp"
         ])
+        
+        df_history["Timestamp"] = pd.to_datetime(df_history["Timestamp"])
 
         st.dataframe(df_history)
         st.subheader("📈 Performance Distribution")
@@ -320,7 +330,9 @@ if st.checkbox("📜 Show Prediction History"):
 
         st.subheader("⚠️ Risk Distribution")
 
-        st.bar_chart(df_history["Risk"].value_counts())
+        risk_counts = df_history["Risk"].value_counts().reset_index()
+        risk_counts.columns = ["Risk", "Count"]
+        st.bar_chart(risk_counts.set_index("Risk"))
 
         st.subheader("📊 Overall Stats")
 
