@@ -21,9 +21,12 @@ st.set_page_config(page_title="Student Performance AI", page_icon="🎓")
 st.title("🎓 Student Performance AI App")
 st.write("Predict student performance and get AI-powered insights")
 
-if st.button("🧹 Clear All Data"):
-    st.session_state.clear()
-    st.rerun()
+col1, col2 = st.columns([8,1])
+
+with col2:
+    if st.button("🧹"):
+        st.session_state.clear()
+        st.rerun()
 # ---------- LOAD DATA ----------
 @st.cache_data
 def get_data():
